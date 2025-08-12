@@ -7,9 +7,13 @@ import com.project.stock_trading.entity.Trade;
 import com.project.stock_trading.repository.TradeRepository;
 
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -137,6 +141,32 @@ public PortfolioSummaryResponse getPortfolioSummary() {
 
     return new PortfolioSummaryResponse(totalInvestment, totalStocksPurchased, sectorWiseInvestment);
 }
+
+    // Inside TradeService
+    @Value("${twelvedata.api.key}")
+    private String apiKey;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    public BigDecimal getCurrentPrice(String stockTicker) {
+        String url = String.format(
+                "https://api.twelvedata.com/price?symbol=%s&apikey=%s",
+                stockTicker,
+                apiKey
+        );
+
+        try {
+            // Response is in form: {"price": "150.42"}
+            var response = restTemplate.getForObject(url, Map.class);
+            if (response != null && response.containsKey("price")) {
+                return new BigDecimal(response.get("price").toString()).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                throw new RuntimeException("Price not found for " + stockTicker);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching price for " + stockTicker, e);
+        }
+    }
 
 
 }

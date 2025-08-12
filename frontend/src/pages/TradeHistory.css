@@ -1,0 +1,102 @@
+rade-history-container {
+  padding: 10px;
+  background-color: #f4f6f9;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin-left: 0px; /* match your sidebar width */
+  margin-right: 20px;
+}
+
+.trade-history-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f1e36;
+  margin-bottom: 25px;
+  border-left: 5px solid #007bff;
+  padding-left: 10px;
+}
+
+.trade-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.trade-table th,
+.trade-table td {
+  padding: 14px 18px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.trade-table th {
+  background: linear-gradient(90deg, #0f1e36, #1f3c66);
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trade-table tr {
+  transition: background-color 0.2s ease-in-out;
+}
+
+.trade-table tr:nth-child(even) {
+  background-color: #f9fbfd;
+}
+
+.trade-table tr:hover {
+  background-color: #e8f0fe;
+}
+
+.trade-table td {
+  color: #333;
+}
+
+.trade-table td.buy {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.trade-table td.sell {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.trade-table td.status {
+  font-weight: 500;
+  border-radius: 5px;
+  padding: 6px 10px;
+}
+
+.trade-table td.status.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.trade-table td.status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.trade-table td.status.failed {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+.sell-button {
+  background-color: #dc3545;
+  color: white;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.sell-button:hover {
+  background-color: #b52a36;
+}

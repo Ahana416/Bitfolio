@@ -24,8 +24,6 @@ public class Trade {
     private BigDecimal price;
     private String sector;
 
-
-
     public Long getId() {
         return id;
     }
@@ -82,8 +80,13 @@ public class Trade {
         this.timestamp = timestamp;
     }
 
-    public String getSector() { return sector; }
-    public void setSector(String sector) { this.sector = sector; }
+    public String getSector() {
+        return sector;
+    }
+
+    public void setSector(String sector) {
+        this.sector = sector;
+    }
 
     private Integer volume;
 
