@@ -31,6 +31,7 @@ public class ExecutedTrade {
 
     private int statusCode; // EXECUTED
 
+    // Ahana : is this needed?
     // Constructor to copy from Trade
     public ExecutedTrade(Trade trade) {
         this.stockTicker = trade.getStockTicker();

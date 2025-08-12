@@ -1,4 +1,3 @@
-//------------------ahana's code2-----------------------//
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import api from "../api";
@@ -10,6 +9,12 @@ function PlaceOrderPage() {
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [trades, setTrades] = useState([]);
+
+  // For Sell Modal
+  const [sellTrade, setSellTrade] = useState(null);
+  const [sellQuantity, setSellQuantity] = useState(1);
+  const [sellLivePrice, setSellLivePrice] = useState(null);
+  const [sellLoadingPrice, setSellLoadingPrice] = useState(false);
 
   const tickersList = [
     { ticker: "NVDA", companyName: "NVIDIA Corp", sector: "Technology", availableVolume: 100 },
@@ -27,7 +32,6 @@ function PlaceOrderPage() {
   const [searchTicker, setSearchTicker] = useState("");
   const [selectedSector, setSelectedSector] = useState("");
 
-  // Fetch trades on mount
   useEffect(() => {
     fetchTrades();
   }, []);
@@ -41,20 +45,29 @@ function PlaceOrderPage() {
     }
   };
 
-  const handleSell = async (tradeId) => {
-    if (!window.confirm("Are you sure you want to sell this stock?")) return;
-
+  // BUY modal handlers
+  const handleBuyClick = async (stock) => {
+    setSelectedStock(stock);
+    setQuantity(1);
+    setLivePrice(null);
+    setLoadingPrice(true);
     try {
-      await axios.delete(`http://localhost:8080/api/trades/${tradeId}`);
-      setTrades(trades.filter((trade) => trade.id !== tradeId));
-      alert("Stock sold successfully!");
-    } catch (error) {
-      console.error("Error selling stock:", error);
-      alert("Error selling stock");
+      const res = await axios.get(`http://localhost:8080/api/trades/price/${stock.ticker}`);
+      setLivePrice(res.data.price);
+    } catch (err) {
+      console.error(`Error fetching price for ${stock.ticker}:`, err.message);
+      setLivePrice("N/A");
+    } finally {
+      setLoadingPrice(false);
     }
   };
 
-  const handleBuyClick = async (stock) => {
+  const handleBuyAgainClick = async (trade) => {
+    const stock = tickersList.find(s => s.ticker === trade.stockTicker);
+    if (!stock) {
+      alert("Stock information not found for buying again.");
+      return;
+    }
     setSelectedStock(stock);
     setQuantity(1);
     setLivePrice(null);
@@ -91,16 +104,62 @@ function PlaceOrderPage() {
     };
 
     try {
-      console.log("Sending trade to backend:", trade);
       const response = await api.post("/trades", trade);
-      console.log("Backend response:", response.data);
-
       alert(`Trade placed successfully for ${selectedStock.ticker}`);
       setSelectedStock(null);
-      fetchTrades(); // Refresh after buying
+      fetchTrades();
     } catch (err) {
       console.error("Error placing trade:", err.response?.data || err.message);
       alert("Error placing trade. Check console for details.");
+    }
+  };
+
+  // SELL modal open
+  const openSellModal = async (trade) => {
+    setSellTrade(trade);
+    setSellQuantity(trade.volume);
+    setSellLivePrice(null);
+    setSellLoadingPrice(true);
+    try {
+      const res = await axios.get(`http://localhost:8080/api/trades/price/${trade.stockTicker}`);
+      setSellLivePrice(res.data.price);
+    } catch (err) {
+      console.error(`Error fetching price for ${trade.stockTicker}:`, err.message);
+      setSellLivePrice("N/A");
+    } finally {
+      setSellLoadingPrice(false);
+    }
+  };
+
+  // SELL confirm
+  const handleConfirmSell = async () => {
+    if (!sellTrade || sellLivePrice === null || sellLivePrice === "N/A") {
+      alert("Cannot sell. Price unavailable.");
+      return;
+    }
+    if (sellQuantity < 1 || sellQuantity > sellTrade.volume) {
+      alert(`Quantity must be between 1 and ${sellTrade.volume}`);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8080/api/trades/${sellTrade.id}/sell`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity: sellQuantity, price: sellLivePrice }),
+      });
+
+      if (!res.ok) throw new Error("Sell failed");
+
+      const updatedTrade = await res.json();
+
+      alert(`Sold ${sellQuantity} shares at $${sellLivePrice} each.`);
+
+      fetchTrades();
+      setSellTrade(null);
+    } catch (error) {
+      console.error("Error selling stock:", error);
+      alert("Error selling stock");
     }
   };
 
@@ -116,7 +175,6 @@ function PlaceOrderPage() {
     <div className="place-order-container">
       <h1>Available Stocks</h1>
 
-      {/* Filters */}
       <div className="filters-container">
         <input
           type="text"
@@ -138,7 +196,6 @@ function PlaceOrderPage() {
         </select>
       </div>
 
-      {/* Stock Table */}
       <table className="stocks-table">
         <thead>
           <tr>
@@ -171,30 +228,224 @@ function PlaceOrderPage() {
 
       {/* Buy Modal */}
       {selectedStock && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>
-              {selectedStock.companyName} ({selectedStock.ticker})
-            </h3>
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "10px",
+              padding: "30px 40px",
+              width: "350px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              textAlign: "center",
+            }}
+          >
+            <h2 style={{ marginBottom: "15px", fontWeight: "700", fontSize: "22px" }}>
+              Buy {selectedStock.companyName} ({selectedStock.ticker})
+            </h2>
+
             {loadingPrice ? (
-              <p>Loading live price...</p>
+              <p style={{ fontSize: "16px", marginBottom: "20px" }}>Loading live price...</p>
             ) : (
-              <p>
+              <p style={{ fontSize: "18px", marginBottom: "25px", color: livePrice === "N/A" ? "#a00" : "#333" }}>
                 Live Price: {livePrice === "N/A" ? "Unavailable" : `$${livePrice}`}
               </p>
             )}
+
+            <label
+              htmlFor="quantity-input"
+              style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "16px", color: "#555" }}
+            >
+              Quantity:
+            </label>
             <input
+              id="quantity-input"
               type="number"
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
               placeholder="Enter quantity"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                fontSize: "16px",
+                borderRadius: "6px",
+                border: "1.5px solid #ccc",
+                marginBottom: "30px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
             />
-            <div className="modal-buttons">
-              <button onClick={handleConfirmBuy} disabled={loadingPrice}>
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                onClick={handleConfirmBuy}
+                disabled={loadingPrice}
+                style={{
+                  flex: "1",
+                  padding: "12px 0",
+                  marginRight: "10px",
+                  backgroundColor: "#007bff",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  cursor: loadingPrice ? "not-allowed" : "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => !loadingPrice && (e.target.style.backgroundColor = "#0056b3")}
+                onMouseLeave={(e) => !loadingPrice && (e.target.style.backgroundColor = "#007bff")}
+              >
                 Confirm Buy
               </button>
-              <button onClick={() => setSelectedStock(null)}>Cancel</button>
+
+              <button
+                onClick={() => setSelectedStock(null)}
+                style={{
+                  flex: "1",
+                  padding: "12px 0",
+                  backgroundColor: "#6c757d",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => (e.target.style.backgroundColor = "#5a6268")}
+                onMouseLeave={(e) => (e.target.style.backgroundColor = "#6c757d")}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell Modal */}
+      {sellTrade && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "10px",
+              padding: "30px 40px",
+              width: "350px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              textAlign: "center",
+            }}
+          >
+            <h2 style={{ marginBottom: "15px", fontWeight: "700", fontSize: "22px" }}>
+              Sell {sellTrade.companyName} ({sellTrade.stockTicker})
+            </h2>
+
+            {sellLoadingPrice ? (
+              <p style={{ fontSize: "16px", marginBottom: "20px" }}>Loading live price...</p>
+            ) : (
+              <p style={{ fontSize: "18px", marginBottom: "25px", color: sellLivePrice === "N/A" ? "#a00" : "#333" }}>
+                Live Price: {sellLivePrice === "N/A" ? "Unavailable" : `$${sellLivePrice}`}
+              </p>
+            )}
+
+            <label
+              htmlFor="sell-quantity-input"
+              style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "16px", color: "#555" }}
+            >
+              Quantity (max {sellTrade.volume}):
+            </label>
+            <input
+              id="sell-quantity-input"
+              type="number"
+              min="1"
+              max={sellTrade.volume}
+              value={sellQuantity}
+              onChange={(e) => setSellQuantity(Number(e.target.value))}
+              placeholder="Enter quantity"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                fontSize: "16px",
+                borderRadius: "6px",
+                border: "1.5px solid #ccc",
+                marginBottom: "30px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                onClick={handleConfirmSell}
+                disabled={sellLoadingPrice}
+                style={{
+                  flex: "1",
+                  padding: "12px 0",
+                  marginRight: "10px",
+                  backgroundColor: "#dc3545",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  cursor: sellLoadingPrice ? "not-allowed" : "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => !sellLoadingPrice && (e.target.style.backgroundColor = "#a71d2a")}
+                onMouseLeave={(e) => !sellLoadingPrice && (e.target.style.backgroundColor = "#dc3545")}
+              >
+                Confirm Sell
+              </button>
+
+              <button
+                onClick={() => setSellTrade(null)}
+                style={{
+                  flex: "1",
+                  padding: "12px 0",
+                  backgroundColor: "#6c757d",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => (e.target.style.backgroundColor = "#5a6268")}
+                onMouseLeave={(e) => (e.target.style.backgroundColor = "#6c757d")}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -213,35 +464,58 @@ function PlaceOrderPage() {
           </tr>
         </thead>
         <tbody>
-          {trades.map((trade) => (
-            <tr key={trade.id}>
-              <td>{trade.stockTicker}</td>
-              <td>{trade.price}</td>
-              <td>{trade.volume}</td>
-              <td>
-                {trade.statusCode === 0
-                  ? "Completed"
-                  : trade.statusCode === 1
-                  ? "Pending"
-                  : "Failed"}
-              </td>
-              <td>
-                <button
-                  className="sell-button"
-                  onClick={() => handleSell(trade.id)}
-                >
-                  Sell
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+  {trades.map((trade) => (
+    <tr key={trade.id}>
+      <td>{trade.stockTicker}</td>
+      <td>{trade.price}</td>
+      <td>{trade.volume}</td>
+      <td>
+        {trade.buyOrSell === "BUY"
+          ? "BOUGHT"
+          : trade.buyOrSell === "SELL"
+          ? "SOLD"
+          : "Failed"}
+      </td>
+      <td>
+        {trade.buyOrSell === "BUY" && (
+          <>
+            <button
+              className="sell-button"
+              onClick={() => openSellModal(trade)}
+              style={{ marginRight: "8px" }}
+            >
+              Sell
+            </button>
+            <button
+              className="buy-again-button"
+              onClick={() => handleBuyAgainClick(trade)}
+            >
+              Buy Again
+            </button>
+          </>
+        )}
+
+        {trade.buyOrSell === "SELL" && (
+          <button
+            className="buy-again-button"
+            onClick={() => handleBuyAgainClick(trade)}
+          >
+            Buy Again
+          </button>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
+
       </table>
     </div>
   );
 }
 
 export default PlaceOrderPage;
+
+
 
 
 //------------------------//

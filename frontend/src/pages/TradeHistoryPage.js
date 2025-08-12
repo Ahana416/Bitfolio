@@ -1,77 +1,93 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import "./TradeHistory.css";
 
 function TradeHistoryPage() {
-//   const [trades, setTrades] = useState([]);
+  const [trades, setTrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-//   useEffect(() => {
-//     fetchTrades();
-//   }, []);
+  useEffect(() => {
+    fetchTrades();
+  }, []);
 
-//   const fetchTrades = async () => {
-//     try {
-//       const response = await axios.get("http://localhost:8080/api/trades");
-//       setTrades(response.data);
-//     } catch (error) {
-//       console.error("Error fetching trades:", error);
-//     }
-//   };
+  const fetchTrades = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:8080/api/trades");
+      setTrades(response.data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load trades.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-//   const handleSell = async (tradeId) => {
-//     if (!window.confirm("Are you sure you want to sell this stock?")) return;
+  return (
+    <div style={{ padding: "20px", maxWidth: "900px", margin: "auto" }}>
+      <h1 style={{ marginBottom: "20px", textAlign: "center" }}>Trade History</h1>
 
-//     try {
-//       await axios.delete(`http://localhost:8080/api/trades/${tradeId}`);
-//       setTrades(trades.filter((trade) => trade.id !== tradeId)); // Remove from UI
-//       alert("Stock sold successfully!");
-//     } catch (error) {
-//       console.error("Error selling stock:", error);
-//       alert("Error selling stock");
-//     }
-//   };
+      {loading && <p style={{ textAlign: "center" }}>Loading trades...</p>}
+      {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
 
-//   return (
-//     <div className="trade-history-container">
-//       <h1 className="trade-history-title">Trade History</h1>
-//       <table className="trade-table">
-//         <thead>
-//           <tr>
-//             <th>Ticker</th>
-//             <th>Price</th>
-//             <th>Volume</th>
-//             <th>Status</th>
-//             <th>Action</th> {/* New column */}
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {trades.map((trade) => (
-//             <tr key={trade.id}>
-//               <td>{trade.stockTicker}</td>
-//               <td>{trade.price}</td>
-//               <td>{trade.volume}</td>
-              
-//               <td>
-//                 {trade.statusCode === 1
-//                   ? "Completed"
-//                   : trade.statusCode === 0
-//                   ? "Pending"
-//                   : "Failed"}
-//               </td>
-//               <td>
-//                 <button
-//                   className="sell-button"
-//                   onClick={() => handleSell(trade.id)}
-//                 >
-//                   Sell
-//                 </button>
-//               </td>
-//             </tr>
-//           ))}
-//         </tbody>
-//       </table>
-//     </div>
-//   );
+      {!loading && !error && (
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                backgroundColor: "#007bff",
+                color: "#fff",
+                textAlign: "left",
+                fontWeight: "bold",
+              }}
+            >
+              <th style={thStyle}>ID</th>
+              <th style={thStyle}>Ticker</th>
+              <th style={thStyle}>Price ($)</th>
+              <th style={thStyle}>Volume</th>
+              <th style={thStyle}>Buy/Sell</th>
+              <th style={thStyle}>Sector</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((trade) => (
+              <tr
+                key={trade.id}
+                style={{
+                  borderBottom: "1px solid #ddd",
+                  backgroundColor:
+                    trade.buyOrSell === "BUY" ? "#e6f0ff" : "#ffe6e6",
+                }}
+              >
+                <td style={tdStyle}>{trade.id}</td>
+                <td style={tdStyle}>{trade.stockTicker}</td>
+                <td style={tdStyle}>{trade.price.toFixed(2)}</td>
+                <td style={tdStyle}>{trade.volume}</td>
+                <td style={tdStyle}>{trade.buyOrSell}</td>
+                <td style={tdStyle}>{trade.sector}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 }
+
+const thStyle = {
+  padding: "12px 15px",
+  borderBottom: "2px solid #0056b3",
+};
+
+const tdStyle = {
+  padding: "10px 15px",
+};
 
 export default TradeHistoryPage;

@@ -4,12 +4,14 @@ import com.project.stock_trading.dto.PortfolioSummaryResponse;
 import com.project.stock_trading.dto.TradeRequest;
 import com.project.stock_trading.dto.TradeResponse;
 import com.project.stock_trading.entity.Trade;
+import com.project.stock_trading.enums.TradeStatus;
 import com.project.stock_trading.repository.TradeRepository;
 
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -33,7 +35,7 @@ public class TradeService {
         trade.setPrice(request.getPrice());
         trade.setVolume(request.getVolume());
         trade.setBuyOrSell(request.getBuyOrSell());
-        trade.setStatusCode(0); // Pending
+        trade.setStatusCode(0); // BUY
         trade.setTimestamp(LocalDateTime.now());
         trade.setSector(request.getSector()); // Set sector from request
 
@@ -47,23 +49,19 @@ public class TradeService {
                 saved.getBuyOrSell(),
                 saved.getStatusCode(),
                 saved.getTimestamp(),
-                trade.getSector()
-        );
+                trade.getSector());
     }
 
     public List<TradeResponse> getAllTrades() {
-        return tradeRepository.findAll().stream().map(trade ->
-                new TradeResponse(
-                        trade.getId(),
-                        trade.getStockTicker(),
-                        trade.getPrice(),
-                        trade.getVolume(),
-                        trade.getBuyOrSell(),
-                        trade.getStatusCode(),
-                        trade.getTimestamp(),
-                        trade.getSector()
-                )
-        ).collect(Collectors.toList());
+        return tradeRepository.findAll().stream().map(trade -> new TradeResponse(
+                trade.getId(),
+                trade.getStockTicker(),
+                trade.getPrice(),
+                trade.getVolume(),
+                trade.getBuyOrSell(),
+                trade.getStatusCode(),
+                trade.getTimestamp(),
+                trade.getSector())).collect(Collectors.toList());
     }
 
     public TradeResponse getTradeById(Long id) {
@@ -76,71 +74,64 @@ public class TradeService {
                 trade.getBuyOrSell(),
                 trade.getStatusCode(),
                 trade.getTimestamp(),
-                trade.getSector()
-        );
+                trade.getSector());
     }
 
     public List<TradeResponse> getTradesByStatusCode(int statusCode) {
 
-        return tradeRepository.findByStatusCode(statusCode).stream().map(trade ->
-                new TradeResponse(
-                        trade.getId(),
-                        trade.getStockTicker(),
-                        trade.getPrice(),
-                        trade.getVolume(),
-                        trade.getBuyOrSell(),
-                        trade.getStatusCode(),
-                        trade.getTimestamp(),
-                        trade.getSector()
-                )
-        ).collect(Collectors.toList());
+        return tradeRepository.findByStatusCode(statusCode).stream().map(trade -> new TradeResponse(
+                trade.getId(),
+                trade.getStockTicker(),
+                trade.getPrice(),
+                trade.getVolume(),
+                trade.getBuyOrSell(),
+                trade.getStatusCode(),
+                trade.getTimestamp(),
+                trade.getSector())).collect(Collectors.toList());
     }
 
-    
-//     public PortfolioSummaryResponse getPortfolioSummary() {
-//     List<Trade> trades = tradeRepository.findAll();
+    // public PortfolioSummaryResponse getPortfolioSummary() {
+    // List<Trade> trades = tradeRepository.findAll();
 
-//     BigDecimal totalInvestment = trades.stream()
-//             .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
-//             .map(t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())))
-//             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    // BigDecimal totalInvestment = trades.stream()
+    // .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
+    // .map(t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())))
+    // .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-//     long totalStocksPurchased = trades.stream()
-//             .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
-//             .mapToLong(Trade::getVolume)
-//             .sum();
+    // long totalStocksPurchased = trades.stream()
+    // .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
+    // .mapToLong(Trade::getVolume)
+    // .sum();
 
-//     return new PortfolioSummaryResponse(totalInvestment, totalStocksPurchased);
+    // return new PortfolioSummaryResponse(totalInvestment, totalStocksPurchased);
 
-public PortfolioSummaryResponse getPortfolioSummary() {
-    List<Trade> trades = tradeRepository.findAll();
+    public PortfolioSummaryResponse getPortfolioSummary() {
+        List<Trade> trades = tradeRepository.findAll();
 
-    // Total Investment
-    BigDecimal totalInvestment = trades.stream()
-            .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
-            .map(t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Total Investment
+        BigDecimal totalInvestment = trades.stream()
+                .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
+                .map(t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    // Total Stocks Purchased
-    long totalStocksPurchased = trades.stream()
-            .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
-            .mapToLong(Trade::getVolume)
-            .sum();
+        // Total Stocks Purchased
+        long totalStocksPurchased = trades.stream()
+                .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
+                .mapToLong(Trade::getVolume)
+                .sum();
 
-    // Sector-wise investment
-    Map<String, BigDecimal> sectorWiseInvestment = trades.stream()
-            .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
-            .collect(Collectors.groupingBy(
-                    Trade::getSector,
-                    Collectors.reducing(
-                            BigDecimal.ZERO,
-                            t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())),
-                            BigDecimal::add
-                    )
-            ));
+        // Sector-wise investment
+        Map<String, BigDecimal> sectorWiseInvestment = trades.stream()
+                .filter(t -> "BUY".equalsIgnoreCase(t.getBuyOrSell()))
+                .collect(Collectors.groupingBy(
+                        Trade::getSector,
+                        Collectors.reducing(
+                                BigDecimal.ZERO,
+                                t -> t.getPrice().multiply(BigDecimal.valueOf(t.getVolume())),
+                                BigDecimal::add)));
 
-    return new PortfolioSummaryResponse(totalInvestment, totalStocksPurchased, sectorWiseInvestment);
-}
+        return new PortfolioSummaryResponse(totalInvestment, totalStocksPurchased, sectorWiseInvestment);
+    }
 
     // Inside TradeService
     @Value("${twelvedata.api.key}")
@@ -152,8 +143,7 @@ public PortfolioSummaryResponse getPortfolioSummary() {
         String url = String.format(
                 "https://api.twelvedata.com/price?symbol=%s&apikey=%s",
                 stockTicker,
-                apiKey
-        );
+                apiKey);
 
         try {
             // Response is in form: {"price": "150.42"}
@@ -168,9 +158,32 @@ public PortfolioSummaryResponse getPortfolioSummary() {
         }
     }
 
+    @Transactional
+    public Trade updateTradeToSell(Long tradeId) {
+        Trade trade = tradeRepository.findById(tradeId)
+                .orElseThrow(() -> new RuntimeException("Trade not found"));
+
+        trade.setBuyOrSell("sell");
+        trade.setStatusCode(TradeStatus.SELL.getCode());
+
+        // Debug print before save
+        System.out.println("Before save: statusCode = " + trade.getStatusCode());
+
+        Trade savedTrade = tradeRepository.save(trade);
+
+        // Debug print after save
+        System.out.println("After save: statusCode = " + savedTrade.getStatusCode());
+
+        return savedTrade;
+    }
+
+    // public List<Trade> getAvailableTradesForSale() {
+    // return tradeRepository.findByBuyOrSell("buy");
+    // }
 
 }
 
+// ---------------old code---------------------
 
 // package com.project.stock_trading.service;
 
@@ -189,72 +202,72 @@ public PortfolioSummaryResponse getPortfolioSummary() {
 // @RequiredArgsConstructor
 // public class TradeService {
 
-//     private final TradeRepository tradeRepository;
+// private final TradeRepository tradeRepository;
 
-//     // public TradeService(TradeRepository tradeRepository) {
-//     //     this.tradeRepository = tradeRepository;
-//     // }
+// // public TradeService(TradeRepository tradeRepository) {
+// // this.tradeRepository = tradeRepository;
+// // }
 
-//     public TradeResponse createTrade(TradeRequest request) {
-//         Trade trade = new Trade();
-//         trade.setStockTicker(request.getStockTicker());
-//         trade.setPrice(request.getPrice());
-//         trade.setVolume(request.getVolume());
-//         trade.setBuyOrSell(request.getBuyOrSell());
-//         trade.setStatusCode(0); // Pending
-//         trade.setTimestamp(LocalDateTime.now());
+// public TradeResponse createTrade(TradeRequest request) {
+// Trade trade = new Trade();
+// trade.setStockTicker(request.getStockTicker());
+// trade.setPrice(request.getPrice());
+// trade.setVolume(request.getVolume());
+// trade.setBuyOrSell(request.getBuyOrSell());
+// trade.setStatusCode(0); // Pending
+// trade.setTimestamp(LocalDateTime.now());
 
-//         Trade saved = tradeRepository.save(trade);
+// Trade saved = tradeRepository.save(trade);
 
-//         return new TradeResponse(
-//                 saved.getId(),
-//                 saved.getStockTicker(),
-//                 saved.getPrice(),
-//                 saved.getVolume(),
-//                 saved.getBuyOrSell(),
-//                 saved.getStatusCode(),
-//                 saved.getTimestamp()
-//         );
-//     }
+// return new TradeResponse(
+// saved.getId(),
+// saved.getStockTicker(),
+// saved.getPrice(),
+// saved.getVolume(),
+// saved.getBuyOrSell(),
+// saved.getStatusCode(),
+// saved.getTimestamp()
+// );
+// }
 
-//     public List<TradeResponse> getAllTrades() {
-//         return tradeRepository.findAll().stream().map(trade ->
-//                 new TradeResponse(
-//                         trade.getId(),
-//                         trade.getStockTicker(),
-//                         trade.getPrice(),
-//                         trade.getVolume(),
-//                         trade.getBuyOrSell(),
-//                         trade.getStatusCode(),
-//                         trade.getTimestamp()
-//                 )
-//         ).collect(Collectors.toList());
-//     }
+// public List<TradeResponse> getAllTrades() {
+// return tradeRepository.findAll().stream().map(trade ->
+// new TradeResponse(
+// trade.getId(),
+// trade.getStockTicker(),
+// trade.getPrice(),
+// trade.getVolume(),
+// trade.getBuyOrSell(),
+// trade.getStatusCode(),
+// trade.getTimestamp()
+// )
+// ).collect(Collectors.toList());
+// }
 
-//     public TradeResponse getTradeById(Long id) {
-//         Trade trade = tradeRepository.findById(id).orElseThrow();
-//         return new TradeResponse(
-//                 trade.getId(),
-//                 trade.getStockTicker(),
-//                 trade.getPrice(),
-//                 trade.getVolume(),
-//                 trade.getBuyOrSell(),
-//                 trade.getStatusCode(),
-//                 trade.getTimestamp()
-//         );
-//     }
+// public TradeResponse getTradeById(Long id) {
+// Trade trade = tradeRepository.findById(id).orElseThrow();
+// return new TradeResponse(
+// trade.getId(),
+// trade.getStockTicker(),
+// trade.getPrice(),
+// trade.getVolume(),
+// trade.getBuyOrSell(),
+// trade.getStatusCode(),
+// trade.getTimestamp()
+// );
+// }
 
-//     public List<TradeResponse> getTradesByStatusCode(int statusCode) {
-//         return tradeRepository.findByStatusCode(statusCode).stream().map(trade ->
-//                 new TradeResponse(
-//                         trade.getId(),
-//                         trade.getStockTicker(),
-//                         trade.getPrice(),
-//                         trade.getVolume(),
-//                         trade.getBuyOrSell(),
-//                         trade.getStatusCode(),
-//                         trade.getTimestamp()
-//                 )
-//         ).collect(Collectors.toList());
-//     }
+// public List<TradeResponse> getTradesByStatusCode(int statusCode) {
+// return tradeRepository.findByStatusCode(statusCode).stream().map(trade ->
+// new TradeResponse(
+// trade.getId(),
+// trade.getStockTicker(),
+// trade.getPrice(),
+// trade.getVolume(),
+// trade.getBuyOrSell(),
+// trade.getStatusCode(),
+// trade.getTimestamp()
+// )
+// ).collect(Collectors.toList());
+// }
 // }

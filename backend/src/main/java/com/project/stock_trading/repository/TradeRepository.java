@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface TradeRepository extends JpaRepository<Trade, Long> {
     List<Trade> findByStatusCode(int statusCode);
-}
 
+    // List<Trade> findByBuyOrSell(String buyOrSell);
+}
