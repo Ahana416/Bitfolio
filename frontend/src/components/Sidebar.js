@@ -18,13 +18,13 @@ function Sidebar() {
         width: "220px",
         background: "#1E293B", // Sidebar background
         color: "#E2E8F0", // Inactive link text
-        height: "100vh",
+        height: "400vh",
         padding: "20px",
         display: "flex",
         flexDirection: "column"
       }}
     >
-      <h4 className="mb-4" style={{ color: "#38BDF8" }}>📈 MyTrading</h4>
+      <h4 className="mb-4" style={{ color: "#38BDF8" }}>📈 Bitfolio</h4>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;

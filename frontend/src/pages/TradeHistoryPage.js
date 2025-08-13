@@ -42,7 +42,7 @@ function TradeHistoryPage() {
           <thead>
             <tr
               style={{
-                backgroundColor: "#007bff",
+                backgroundColor: "#1E293B",
                 color: "#fff",
                 textAlign: "left",
                 fontWeight: "bold",
